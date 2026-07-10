@@ -21,7 +21,8 @@ local DAILY_FILE = "Khogamegiare_Daily.json"
 local SETTINGS_FILE = "Khogamegiare_Settings.json"
 
 local CurrentWebhook = ""
-local AppSettings = { ConfirmPrompt = true }
+local AppSettings = { ConfirmPrompt = true, AutoCollect = false }
+local isAutoCollectEnabled = false
 
 -- Load/Save Systems
 local function LoadWebhook()
@@ -40,10 +41,12 @@ end
 local function LoadSettings()
     if hasFS and isfile(SETTINGS_FILE) then
         local ok, res = pcall(function() return HttpService:JSONDecode(readfile(SETTINGS_FILE)) end)
-        if ok and type(res) == "table" and res.ConfirmPrompt ~= nil then
-            AppSettings.ConfirmPrompt = res.ConfirmPrompt
+        if ok and type(res) == "table" then
+            if res.ConfirmPrompt ~= nil then AppSettings.ConfirmPrompt = res.ConfirmPrompt end
+            if res.AutoCollect ~= nil then AppSettings.AutoCollect = res.AutoCollect end
         end
     end
+    isAutoCollectEnabled = AppSettings.AutoCollect
 end
 LoadSettings()
 
@@ -112,6 +115,42 @@ end)
 
 local Net = require(RS:WaitForChild("SharedModules"):WaitForChild("Networking"))
 local PS = require(RS:WaitForChild("ClientModules"):WaitForChild("PlayerStateClient"))
+
+-- ==========================================
+-- SUPER FAST ORB & LOOT COLLECTOR
+-- ==========================================
+local function collectAllOrbs()
+    local orbsFolder = workspace:FindFirstChild("__THINGS") and workspace.__THINGS:FindFirstChild("Orbs")
+    if orbsFolder then
+        local children = orbsFolder:GetChildren()
+        if #children > 0 then
+            local orbTable = {}
+            for _, v in ipairs(children) do
+                if v:IsA("BasePart") or v:IsA("Model") then
+                    orbTable[v.Name] = v.Name
+                end
+            end
+            pcall(function()
+                if Net and Net.Orbs and Net.Orbs.Claim then
+                    Net.Orbs.Claim:Fire(orbTable)
+                else
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Network") and game:GetService("ReplicatedStorage").Network:FindFirstChild("Orbs: Claim")
+                    if remote then
+                        remote:FireServer(orbTable)
+                    end
+                end
+            end)
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if isAutoCollectEnabled then
+            pcall(collectAllOrbs)
+        end
+    end
+end)
 
 -- ==========================================
 -- DISCORD WEBHOOK LOGIC
@@ -817,11 +856,18 @@ StartBtn.TextSize = 11
 stylePremiumButton(StartBtn, Color3.fromRGB(0, 140, 70), Color3.fromRGB(0, 230, 118))
 
 local ToggleConfirmBtn = Instance.new("TextButton", TradeFrame)
-ToggleConfirmBtn.Size = UDim2.new(0, 250, 0, 15)
+ToggleConfirmBtn.Size = UDim2.new(0, 120, 0, 15)
 ToggleConfirmBtn.Position = UDim2.new(0.5, -125, 0, 265)
 ToggleConfirmBtn.Font = Enum.Font.GothamBold
 ToggleConfirmBtn.TextSize = 10
 ToggleConfirmBtn.BackgroundTransparency = 1
+
+local ToggleCollectBtn = Instance.new("TextButton", TradeFrame)
+ToggleCollectBtn.Size = UDim2.new(0, 120, 0, 15)
+ToggleCollectBtn.Position = UDim2.new(0.5, 5, 0, 265)
+ToggleCollectBtn.Font = Enum.Font.GothamBold
+ToggleCollectBtn.TextSize = 10
+ToggleCollectBtn.BackgroundTransparency = 1
 
 local function UpdateToggleUI()
     if AppSettings.ConfirmPrompt then
@@ -834,10 +880,28 @@ local function UpdateToggleUI()
 end
 UpdateToggleUI()
 
+local function UpdateCollectUI()
+    if isAutoCollectEnabled then
+        ToggleCollectBtn.Text = "⚡ Auto Collect: ON"
+        ToggleCollectBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+    else
+        ToggleCollectBtn.Text = "⚪ Auto Collect: OFF"
+        ToggleCollectBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+    end
+end
+UpdateCollectUI()
+
 ToggleConfirmBtn.MouseButton1Click:Connect(function()
     AppSettings.ConfirmPrompt = not AppSettings.ConfirmPrompt
     SaveSettings()
     UpdateToggleUI()
+end)
+
+ToggleCollectBtn.MouseButton1Click:Connect(function()
+    isAutoCollectEnabled = not isAutoCollectEnabled
+    AppSettings.AutoCollect = isAutoCollectEnabled
+    SaveSettings()
+    UpdateCollectUI()
 end)
 
 local WebhookInput = Instance.new("TextBox", TradeFrame)
@@ -1024,6 +1088,55 @@ local function GetInventoryData()
     return AggregatedItems
 end
 
+-- ==========================================
+-- HIGH-SPEED ITEM DROPPER
+-- ==========================================
+local function DropItem(displayName, itemKey, countToDrop)
+    if countToDrop <= 0 then return end
+    
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+    StatusLabel.Text = "Dropping " .. tostring(countToDrop) .. " " .. displayName .. "..."
+    
+    task.spawn(function()
+        for i = 1, countToDrop do
+            local success = pcall(function()
+                if Net and Net.Consumables and Net.Consumables.Use then
+                    if type(Net.Consumables.Use.Invoke) == "function" then
+                        Net.Consumables.Use:Invoke(itemKey)
+                    elseif type(Net.Consumables.Use.Fire) == "function" then
+                        Net.Consumables.Use:Fire(itemKey)
+                    end
+                else
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Network") and game:GetService("ReplicatedStorage").Network:FindFirstChild("Consumables: Use")
+                    if remote then
+                        if remote:IsA("RemoteFunction") then
+                            remote:InvokeServer(itemKey)
+                        elseif remote:IsA("RemoteEvent") then
+                            remote:FireServer(itemKey)
+                        end
+                    end
+                end
+            end)
+            if not success then
+                pcall(function()
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Network") and game:GetService("ReplicatedStorage").Network:FindFirstChild("Consumables: Use")
+                    if remote then
+                        if remote:IsA("RemoteFunction") then
+                            remote:InvokeServer(displayName)
+                        elseif remote:IsA("RemoteEvent") then
+                            remote:FireServer(displayName)
+                        end
+                    end
+                end)
+            end
+            task.wait(0.08) -- High speed drop delay
+        end
+        StatusLabel.Text = "✅ Finished dropping " .. displayName
+        task.wait(0.5)
+        RefreshInventoryUI()
+    end)
+end
+
 local isRefreshing = false
 
 local function RefreshInventoryUI()
@@ -1041,8 +1154,11 @@ local function RefreshInventoryUI()
                 local isVisible = (CurrentTab == "All" or CurrentTab == data.TabCategory)
                 
                 if not ItemInputs[hash] then
+                    local isPet = (data.TabCategory == "Pets")
+                    local rowHeight = isPet and 26 or 50
+                    
                     local Row = Instance.new("Frame", Scroll)
-                    Row.Size = UDim2.new(1, -10, 0, 26)
+                    Row.Size = UDim2.new(1, -10, 0, rowHeight)
                     Row.BackgroundColor3 = Color3.fromRGB(24, 25, 32)
                     Row.Visible = isVisible
                     Instance.new("UICorner", Row).CornerRadius = UDim.new(0, 6)
@@ -1052,7 +1168,7 @@ local function RefreshInventoryUI()
                     RowStroke.Color = Color3.fromRGB(38, 40, 50)
                     RowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                     RowStroke.Transparency = 0.4
-
+                    
                     -- Row Hover Effect
                     Row.MouseEnter:Connect(function()
                         tween(Row, 0.15, {BackgroundColor3 = Color3.fromRGB(30, 31, 40)})
@@ -1064,8 +1180,6 @@ local function RefreshInventoryUI()
                     end)
 
                     local NameLabel = Instance.new("TextLabel", Row)
-                    NameLabel.Size = UDim2.new(0.43, 0, 1, 0)
-                    NameLabel.Position = UDim2.new(0.02, 0, 0, 0)
                     NameLabel.Text = data.DisplayName
                     NameLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
                     NameLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1075,8 +1189,6 @@ local function RefreshInventoryUI()
                     NameLabel.ClipsDescendants = true
 
                     local CountLabel = Instance.new("TextLabel", Row)
-                    CountLabel.Size = UDim2.new(0.15, 0, 1, 0)
-                    CountLabel.Position = UDim2.new(0.45, 0, 0, 0)
                     CountLabel.Text = "(" .. data.Total .. ")"
                     CountLabel.TextColor3 = Color3.fromRGB(120, 120, 130)
                     CountLabel.TextSize = 10
@@ -1084,19 +1196,68 @@ local function RefreshInventoryUI()
                     CountLabel.BackgroundTransparency = 1
 
                     local AmountInp = Instance.new("TextBox", Row)
-                    AmountInp.Size = UDim2.new(0.2, 0, 0.8, 0)
-                    AmountInp.Position = UDim2.new(0.62, 0, 0.1, 0)
                     AmountInp.Text = "0"
                     AmountInp.TextColor3 = Color3.fromRGB(0, 255, 127)
                     AmountInp.TextSize = 10
-                    stylePremiumTextBox(AmountInp, Color3.fromRGB(0, 255, 127), Color3.fromRGB(38, 40, 50))
                     
                     local MaxBtn = Instance.new("TextButton", Row)
-                    MaxBtn.Size = UDim2.new(0.15, 0, 0.8, 0)
-                    MaxBtn.Position = UDim2.new(0.83, 0, 0.1, 0)
                     MaxBtn.Text = "ALL"
                     MaxBtn.TextSize = 9
-                    stylePremiumButton(MaxBtn, Color3.fromRGB(0, 90, 160), Color3.fromRGB(0, 150, 255))
+                    
+                    if isPet then
+                        NameLabel.Size = UDim2.new(0.43, 0, 1, 0)
+                        NameLabel.Position = UDim2.new(0.02, 0, 0, 0)
+                        
+                        CountLabel.Size = UDim2.new(0.15, 0, 1, 0)
+                        CountLabel.Position = UDim2.new(0.45, 0, 0, 0)
+                        CountLabel.TextXAlignment = Enum.TextXAlignment.Left
+                        
+                        AmountInp.Size = UDim2.new(0.2, 0, 0.8, 0)
+                        AmountInp.Position = UDim2.new(0.62, 0, 0.1, 0)
+                        stylePremiumTextBox(AmountInp, Color3.fromRGB(0, 255, 127), Color3.fromRGB(38, 40, 50))
+                        
+                        MaxBtn.Size = UDim2.new(0.15, 0, 0.8, 0)
+                        MaxBtn.Position = UDim2.new(0.83, 0, 0.1, 0)
+                        stylePremiumButton(MaxBtn, Color3.fromRGB(0, 90, 160), Color3.fromRGB(0, 150, 255))
+                    else
+                        NameLabel.Size = UDim2.new(0.55, 0, 0, 20)
+                        NameLabel.Position = UDim2.new(0.02, 0, 0, 3)
+                        
+                        CountLabel.Size = UDim2.new(0.35, 0, 0, 20)
+                        CountLabel.Position = UDim2.new(0.60, 0, 0, 3)
+                        CountLabel.TextXAlignment = Enum.TextXAlignment.Right
+                        
+                        AmountInp.Size = UDim2.new(0.25, 0, 0, 20)
+                        AmountInp.Position = UDim2.new(0.02, 0, 0, 25)
+                        stylePremiumTextBox(AmountInp, Color3.fromRGB(0, 255, 127), Color3.fromRGB(38, 40, 50))
+                        
+                        MaxBtn.Size = UDim2.new(0.20, 0, 0, 20)
+                        MaxBtn.Position = UDim2.new(0.28, 0, 0, 25)
+                        stylePremiumButton(MaxBtn, Color3.fromRGB(0, 90, 160), Color3.fromRGB(0, 150, 255))
+                        
+                        local DropAmountInp = Instance.new("TextBox", Row)
+                        DropAmountInp.Size = UDim2.new(0.25, 0, 0, 20)
+                        DropAmountInp.Position = UDim2.new(0.52, 0, 0, 25)
+                        DropAmountInp.Text = "0"
+                        DropAmountInp.TextColor3 = Color3.fromRGB(255, 200, 0)
+                        DropAmountInp.TextSize = 10
+                        stylePremiumTextBox(DropAmountInp, Color3.fromRGB(255, 200, 0), Color3.fromRGB(38, 40, 50))
+                        
+                        local DropBtn = Instance.new("TextButton", Row)
+                        DropBtn.Size = UDim2.new(0.20, 0, 0, 20)
+                        DropBtn.Position = UDim2.new(0.78, 0, 0, 25)
+                        DropBtn.Text = "DROP"
+                        DropBtn.TextSize = 9
+                        stylePremiumButton(DropBtn, Color3.fromRGB(150, 80, 0), Color3.fromRGB(255, 120, 0))
+                        
+                        DropBtn.MouseButton1Click:Connect(function()
+                            local countToDrop = tonumber(DropAmountInp.Text) or 0
+                            if countToDrop > 0 then
+                                local itemKey = data.RawItems[1] and data.RawItems[1].ItemKey or hash
+                                DropItem(data.DisplayName, itemKey, countToDrop)
+                            end
+                        end)
+                    end
                     
                     MaxBtn.MouseButton1Click:Connect(function()
                         if ItemInputs[hash] then
