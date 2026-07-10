@@ -176,8 +176,7 @@ end
 -- UI SETUP
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "VipGift_Khogamegiare"
-ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
 -- Tween Service for smooth animations
 local TS = game:GetService("TweenService")
@@ -190,68 +189,68 @@ local function tween(obj, t, properties, style, dir)
     return tweenObj
 end
 
--- Premium Button Styler with hover and press effects
+-- Mecha Button Styler (Sharp, High Tech Outlines)
 local function stylePremiumButton(btn, bgColor, strokeColor)
     btn.BackgroundColor3 = bgColor
-    btn.Font = Enum.Font.GothamBold
+    btn.Font = Enum.Font.Code
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     
-    local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 6)
+    local corner = btn:FindFirstChildOfClass("UICorner") or Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0, 0)
     
     local stroke = btn:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke", btn)
-    stroke.Thickness = 1.2
+    stroke.Thickness = 1
     stroke.Color = strokeColor
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Transparency = 0.4
+    stroke.Transparency = 0.3
     
     local originalSize = btn.Size
     
     btn.MouseEnter:Connect(function()
-        tween(btn, 0.2, {BackgroundColor3 = bgColor:Lerp(Color3.fromRGB(255, 255, 255), 0.15)})
-        tween(stroke, 0.2, {Transparency = 0, Color = strokeColor:Lerp(Color3.fromRGB(255, 255, 255), 0.2)})
+        tween(btn, 0.15, {BackgroundColor3 = bgColor:Lerp(Color3.fromRGB(255, 255, 255), 0.1)})
+        tween(stroke, 0.15, {Transparency = 0, Color = strokeColor:Lerp(Color3.fromRGB(255, 255, 255), 0.3)})
     end)
     
     btn.MouseLeave:Connect(function()
-        tween(btn, 0.2, {BackgroundColor3 = bgColor})
-        tween(stroke, 0.2, {Transparency = 0.4, Color = strokeColor})
-        tween(btn, 0.2, {Size = originalSize})
+        tween(btn, 0.15, {BackgroundColor3 = bgColor})
+        tween(stroke, 0.15, {Transparency = 0.3, Color = strokeColor})
+        tween(btn, 0.15, {Size = originalSize})
     end)
     
     btn.MouseButton1Down:Connect(function()
-        local pressSize = UDim2.new(originalSize.X.Scale, originalSize.X.Offset - 4, originalSize.Y.Scale, originalSize.Y.Offset - 2)
-        tween(btn, 0.1, {Size = pressSize})
+        local pressSize = UDim2.new(originalSize.X.Scale, originalSize.X.Offset - 3, originalSize.Y.Scale, originalSize.Y.Offset - 1)
+        tween(btn, 0.05, {Size = pressSize})
     end)
     
     btn.MouseButton1Up:Connect(function()
-        tween(btn, 0.1, {Size = originalSize})
+        tween(btn, 0.05, {Size = originalSize})
     end)
 end
 
--- Premium TextBox Styler with focus outline glows
+-- Mecha TextBox Styler (Sharp, Focus Orange/Cyan)
 local function stylePremiumTextBox(tb, focusedColor, normalColor)
-    tb.BackgroundColor3 = Color3.fromRGB(24, 25, 32)
+    tb.BackgroundColor3 = Color3.fromRGB(12, 13, 17)
     tb.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tb.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
-    tb.Font = Enum.Font.Gotham
+    tb.PlaceholderColor3 = Color3.fromRGB(100, 100, 110)
+    tb.Font = Enum.Font.Code
     
-    local corner = Instance.new("UICorner", tb)
-    corner.CornerRadius = UDim.new(0, 6)
+    local corner = tb:FindFirstChildOfClass("UICorner") or Instance.new("UICorner", tb)
+    corner.CornerRadius = UDim.new(0, 0)
     
     local stroke = tb:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke", tb)
-    stroke.Thickness = 1.2
+    stroke.Thickness = 1
     stroke.Color = normalColor
     stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     stroke.Transparency = 0.4
     
     tb.Focused:Connect(function()
-        tween(tb, 0.25, {BackgroundColor3 = Color3.fromRGB(30, 31, 40)})
-        tween(stroke, 0.25, {Color = focusedColor, Transparency = 0})
+        tween(tb, 0.2, {BackgroundColor3 = Color3.fromRGB(18, 20, 26)})
+        tween(stroke, 0.2, {Color = focusedColor, Transparency = 0})
     end)
     
     tb.FocusLost:Connect(function()
-        tween(tb, 0.25, {BackgroundColor3 = Color3.fromRGB(24, 25, 32)})
-        tween(stroke, 0.25, {Color = normalColor, Transparency = 0.4})
+        tween(tb, 0.2, {BackgroundColor3 = Color3.fromRGB(12, 13, 17)})
+        tween(stroke, 0.2, {Color = normalColor, Transparency = 0.4})
     end)
 end
 
@@ -294,111 +293,150 @@ local function MakeDraggable(dragFrame, dragHandle)
     end)
 end
 
--- Main Window
+-- Main Window (Sharp Mecha Panel)
 local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Size = UDim2.new(0, 270, 0, 365) 
 MainFrame.Position = UDim2.new(0.5, -250, 0.5, -182) 
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 16, 22)
+MainFrame.BackgroundColor3 = Color3.fromRGB(11, 12, 16)
 MainFrame.Active = true
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+MainFrame.ZIndex = 10
+local MainFrameCorner = Instance.new("UICorner", MainFrame)
+MainFrameCorner.CornerRadius = UDim.new(0, 0)
 
 local MainStroke = Instance.new("UIStroke", MainFrame)
 MainStroke.Thickness = 1.5
-MainStroke.Color = Color3.fromRGB(0, 255, 150)
+MainStroke.Color = Color3.fromRGB(0, 240, 255) -- Glowing Neon Cyan Border
 MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- Header/Title Bar
+-- Header/Title Bar (Mecha Tech)
 local TitleBar = Instance.new("Frame", MainFrame)
 TitleBar.Size = UDim2.new(1, 0, 0, 32)
-TitleBar.BackgroundColor3 = Color3.fromRGB(24, 25, 32)
+TitleBar.BackgroundColor3 = Color3.fromRGB(20, 22, 28)
 TitleBar.BorderSizePixel = 0
+TitleBar.ZIndex = 11
 local TitleBarCorner = Instance.new("UICorner", TitleBar)
-TitleBarCorner.CornerRadius = UDim.new(0, 10)
+TitleBarCorner.CornerRadius = UDim.new(0, 0)
 
-local TitleBarBottomCover = Instance.new("Frame", TitleBar)
-TitleBarBottomCover.Size = UDim2.new(1, 0, 0, 10)
-TitleBarBottomCover.Position = UDim2.new(0, 0, 1, -10)
-TitleBarBottomCover.BackgroundColor3 = Color3.fromRGB(24, 25, 32)
-TitleBarBottomCover.BorderSizePixel = 0
+-- Tech Line under Title
+local TitleBarTechLine = Instance.new("Frame", TitleBar)
+TitleBarTechLine.Size = UDim2.new(1, 0, 0, 2)
+TitleBarTechLine.Position = UDim2.new(0, 0, 1, -2)
+TitleBarTechLine.BackgroundColor3 = Color3.fromRGB(0, 240, 255)
+TitleBarTechLine.BorderSizePixel = 0
+TitleBarTechLine.ZIndex = 12
 
 local Title = Instance.new("TextLabel", TitleBar)
-Title.Size = UDim2.new(1, -60, 1, 0)
+Title.Size = UDim2.new(1, -145, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.Text = "VIP GIFT KHOGAMEGIARE.COM"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 11
+Title.Font = Enum.Font.Code
+Title.TextSize = 10
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
+Title.ZIndex = 12
 
 local TitleGradient = Instance.new("UIGradient", Title)
 TitleGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 150)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 200, 255))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 240, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 0))
 })
 
 MakeDraggable(MainFrame, TitleBar)
 
--- History Frame (Left/Right Panel)
+-- History Frame (Mecha Sliding Wing Panel)
 local HistoryFrame = Instance.new("Frame", MainFrame)
 HistoryFrame.Size = UDim2.new(0, 210, 1, 0)
 HistoryFrame.Position = UDim2.new(1, 5, 0, 0)
-HistoryFrame.BackgroundColor3 = Color3.fromRGB(15, 16, 22)
-Instance.new("UICorner", HistoryFrame).CornerRadius = UDim.new(0, 10)
+HistoryFrame.BackgroundColor3 = Color3.fromRGB(11, 12, 16)
+HistoryFrame.ZIndex = 5 -- Lower Z-Index to slide behind MainFrame!
+local HistoryFrameCorner = Instance.new("UICorner", HistoryFrame)
+HistoryFrameCorner.CornerRadius = UDim.new(0, 0)
 
 local HistoryStroke = Instance.new("UIStroke", HistoryFrame)
 HistoryStroke.Thickness = 1.5
-HistoryStroke.Color = Color3.fromRGB(0, 200, 255)
+HistoryStroke.Color = Color3.fromRGB(255, 100, 0) -- Neon Orange accent border
 HistoryStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 local HistoryHeader = Instance.new("Frame", HistoryFrame)
 HistoryHeader.Size = UDim2.new(1, 0, 0, 32)
-HistoryHeader.BackgroundColor3 = Color3.fromRGB(24, 25, 32)
+HistoryHeader.BackgroundColor3 = Color3.fromRGB(20, 22, 28)
 HistoryHeader.BorderSizePixel = 0
+HistoryHeader.ZIndex = 6
 local HistoryHeaderCorner = Instance.new("UICorner", HistoryHeader)
-HistoryHeaderCorner.CornerRadius = UDim.new(0, 10)
+HistoryHeaderCorner.CornerRadius = UDim.new(0, 0)
 
-local HistoryHeaderBottomCover = Instance.new("Frame", HistoryHeader)
-HistoryHeaderBottomCover.Size = UDim2.new(1, 0, 0, 10)
-HistoryHeaderBottomCover.Position = UDim2.new(0, 0, 1, -10)
-HistoryHeaderBottomCover.BackgroundColor3 = Color3.fromRGB(24, 25, 32)
-HistoryHeaderBottomCover.BorderSizePixel = 0
+local HistoryHeaderTechLine = Instance.new("Frame", HistoryHeader)
+HistoryHeaderTechLine.Size = UDim2.new(1, 0, 0, 2)
+HistoryHeaderTechLine.Position = UDim2.new(0, 0, 1, -2)
+HistoryHeaderTechLine.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+HistoryHeaderTechLine.BorderSizePixel = 0
+HistoryHeaderTechLine.ZIndex = 7
 
 local HistoryTitle = Instance.new("TextLabel", HistoryHeader)
 HistoryTitle.Size = UDim2.new(1, -70, 1, 0)
 HistoryTitle.Position = UDim2.new(0, 10, 0, 0)
-HistoryTitle.Text = "HISTORY"
+HistoryTitle.Text = "HISTORY LOG"
 HistoryTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-HistoryTitle.Font = Enum.Font.GothamBold
-HistoryTitle.TextSize = 11
+HistoryTitle.Font = Enum.Font.Code
+HistoryTitle.TextSize = 10
 HistoryTitle.TextXAlignment = Enum.TextXAlignment.Left
 HistoryTitle.BackgroundTransparency = 1
+HistoryTitle.ZIndex = 7
 
 local HistoryTitleGradient = Instance.new("UIGradient", HistoryTitle)
 HistoryTitleGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 200, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 80, 255))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 0)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 240, 255))
 })
 
 local ClearBtn = Instance.new("TextButton", HistoryHeader)
 ClearBtn.Size = UDim2.new(0, 50, 0, 20)
 ClearBtn.Position = UDim2.new(1, -55, 0.5, -10)
-ClearBtn.Text = "🗑️ CLEAR"
+ClearBtn.Text = "CLEAR"
 ClearBtn.TextSize = 9
-stylePremiumButton(ClearBtn, Color3.fromRGB(150, 30, 30), Color3.fromRGB(220, 50, 50))
+ClearBtn.ZIndex = 7
+stylePremiumButton(ClearBtn, Color3.fromRGB(60, 20, 20), Color3.fromRGB(255, 50, 50))
 
 local HistoryScroll = Instance.new("ScrollingFrame", HistoryFrame)
 HistoryScroll.Size = UDim2.new(1, -10, 1, -38)
 HistoryScroll.Position = UDim2.new(0, 5, 0, 35)
 HistoryScroll.BackgroundTransparency = 1
 HistoryScroll.ScrollBarThickness = 3
-HistoryScroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 90)
+HistoryScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 100, 0)
 HistoryScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+HistoryScroll.ZIndex = 6
 local HistoryLayout = Instance.new("UIListLayout", HistoryScroll)
 HistoryLayout.Padding = UDim.new(0, 5)
 HistoryLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     HistoryScroll.CanvasSize = UDim2.new(0, 0, 0, HistoryLayout.AbsoluteContentSize.Y + 10)
 end)
+
+-- History Collapse / Expand sliding wings logic
+local isHistoryOpen = true
+local HistoryToggleBtn = Instance.new("TextButton", TitleBar)
+HistoryToggleBtn.Size = UDim2.new(0, 75, 0, 20)
+HistoryToggleBtn.Position = UDim2.new(1, -130, 0, 6)
+HistoryToggleBtn.Text = "▶ HISTORY"
+HistoryToggleBtn.TextSize = 9
+HistoryToggleBtn.ZIndex = 12
+stylePremiumButton(HistoryToggleBtn, Color3.fromRGB(20, 22, 28), Color3.fromRGB(255, 100, 0))
+
+local function ToggleHistory()
+    isHistoryOpen = not isHistoryOpen
+    if isHistoryOpen then
+        HistoryToggleBtn.Text = "▶ HISTORY"
+        HistoryFrame.Visible = true
+        tween(HistoryFrame, 0.35, {Position = UDim2.new(1, 5, 0, 0)}, Enum.EasingStyle.Quad)
+    else
+        HistoryToggleBtn.Text = "◀ HISTORY"
+        tween(HistoryFrame, 0.35, {Position = UDim2.new(0, 30, 0, 0)}, Enum.EasingStyle.Quad)
+        task.delay(0.35, function()
+            if not isHistoryOpen then HistoryFrame.Visible = false end
+        end)
+    end
+end
+HistoryToggleBtn.MouseButton1Click:Connect(ToggleHistory)
 
 -- ==========================================
 -- MULTI-ACCOUNT DAILY LIMIT MANAGER
@@ -464,28 +502,30 @@ end
 local ConfirmFrame = Instance.new("Frame", MainFrame)
 ConfirmFrame.Size = UDim2.new(1, 0, 1, 0)
 ConfirmFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ConfirmFrame.BackgroundTransparency = 0.2
+ConfirmFrame.BackgroundTransparency = 0.3
 ConfirmFrame.ZIndex = 50
 ConfirmFrame.Visible = false
-Instance.new("UICorner", ConfirmFrame).CornerRadius = UDim.new(0, 10)
+local ConfirmFrameCorner = Instance.new("UICorner", ConfirmFrame)
+ConfirmFrameCorner.CornerRadius = UDim.new(0, 0)
 
 local ConfirmModal = Instance.new("Frame", ConfirmFrame)
 ConfirmModal.Size = UDim2.new(0, 230, 0, 150)
 ConfirmModal.Position = UDim2.new(0.5, -115, 0.5, -75)
-ConfirmModal.BackgroundColor3 = Color3.fromRGB(24, 25, 32)
+ConfirmModal.BackgroundColor3 = Color3.fromRGB(20, 22, 28)
 ConfirmModal.ZIndex = 51
-Instance.new("UICorner", ConfirmModal).CornerRadius = UDim.new(0, 10)
+local ConfirmModalCorner = Instance.new("UICorner", ConfirmModal)
+ConfirmModalCorner.CornerRadius = UDim.new(0, 0)
 
 local ConfirmModalStroke = Instance.new("UIStroke", ConfirmModal)
-ConfirmModalStroke.Thickness = 1.2
-ConfirmModalStroke.Color = Color3.fromRGB(255, 200, 0)
+ConfirmModalStroke.Thickness = 1.5
+ConfirmModalStroke.Color = Color3.fromRGB(255, 100, 0)
 ConfirmModalStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 local ConfirmTitle = Instance.new("TextLabel", ConfirmModal)
 ConfirmTitle.Size = UDim2.new(1, 0, 0, 30)
-ConfirmTitle.Text = "⚠️ CONFIRM GIFT"
-ConfirmTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
-ConfirmTitle.Font = Enum.Font.GothamBold
+ConfirmTitle.Text = "⚠️ SYSTEM CONFIRM"
+ConfirmTitle.TextColor3 = Color3.fromRGB(255, 100, 0)
+ConfirmTitle.Font = Enum.Font.Code
 ConfirmTitle.TextSize = 12
 ConfirmTitle.BackgroundTransparency = 1
 ConfirmTitle.ZIndex = 52
@@ -495,8 +535,8 @@ ConfirmMsg.Size = UDim2.new(1, -20, 1, -75)
 ConfirmMsg.Position = UDim2.new(0, 10, 0, 30)
 ConfirmMsg.Text = "Are you sure?"
 ConfirmMsg.TextColor3 = Color3.fromRGB(220, 220, 220)
-ConfirmMsg.Font = Enum.Font.Gotham
-ConfirmMsg.TextSize = 10
+ConfirmMsg.Font = Enum.Font.Code
+ConfirmMsg.TextSize = 9
 ConfirmMsg.TextWrapped = true
 ConfirmMsg.TextYAlignment = Enum.TextYAlignment.Top
 ConfirmMsg.BackgroundTransparency = 1
@@ -505,18 +545,18 @@ ConfirmMsg.ZIndex = 52
 local ConfirmYes = Instance.new("TextButton", ConfirmModal)
 ConfirmYes.Size = UDim2.new(0, 100, 0, 25)
 ConfirmYes.Position = UDim2.new(0, 10, 1, -35)
-ConfirmYes.Text = "✔ CONFIRM"
+ConfirmYes.Text = "CONFIRM"
 ConfirmYes.TextSize = 10
 ConfirmYes.ZIndex = 52
-stylePremiumButton(ConfirmYes, Color3.fromRGB(0, 140, 70), Color3.fromRGB(0, 230, 118))
+stylePremiumButton(ConfirmYes, Color3.fromRGB(15, 45, 30), Color3.fromRGB(0, 240, 255))
 
 local ConfirmNo = Instance.new("TextButton", ConfirmModal)
 ConfirmNo.Size = UDim2.new(0, 100, 0, 25)
 ConfirmNo.Position = UDim2.new(1, -110, 1, -35)
-ConfirmNo.Text = "✖ CANCEL"
+ConfirmNo.Text = "CANCEL"
 ConfirmNo.TextSize = 10
 ConfirmNo.ZIndex = 52
-stylePremiumButton(ConfirmNo, Color3.fromRGB(150, 30, 30), Color3.fromRGB(220, 50, 50))
+stylePremiumButton(ConfirmNo, Color3.fromRGB(45, 15, 15), Color3.fromRGB(255, 50, 50))
 
 local currentConfirmConn, currentCancelConn
 
@@ -597,7 +637,8 @@ end
 local function RenderHistoryEntry(entry)
     local EntryFrame = Instance.new("Frame", HistoryScroll)
     local EntryCorner = Instance.new("UICorner", EntryFrame)
-    EntryCorner.CornerRadius = UDim.new(0, 6)
+    EntryCorner.CornerRadius = UDim.new(0, 0)
+    EntryFrame.ZIndex = 6
     
     local EntryStroke = Instance.new("UIStroke", EntryFrame)
     EntryStroke.Thickness = 1
@@ -609,41 +650,43 @@ local function RenderHistoryEntry(entry)
     AvatarImg.Position = UDim2.new(0, 6, 0.5, -12)
     AvatarImg.BackgroundTransparency = 1
     AvatarImg.Image = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(entry.uid) .. "&w=48&h=48"
+    AvatarImg.ZIndex = 6
     local AvatarCorner = Instance.new("UICorner", AvatarImg)
-    AvatarCorner.CornerRadius = UDim.new(1, 0)
+    AvatarCorner.CornerRadius = UDim.new(0, 0)
 
     local TextLbl = Instance.new("TextLabel", EntryFrame)
     TextLbl.Size = UDim2.new(1, -38, 1, 0)
     TextLbl.Position = UDim2.new(0, 34, 0, 0)
     TextLbl.BackgroundTransparency = 1
-    TextLbl.Font = Enum.Font.Gotham
-    TextLbl.TextSize = 10
+    TextLbl.Font = Enum.Font.Code
+    TextLbl.TextSize = 9
     TextLbl.TextXAlignment = Enum.TextXAlignment.Left
     TextLbl.TextWrapped = true
+    TextLbl.ZIndex = 7
     
     local timeStr = os.date("%H:%M", entry.time or os.time())
     local fullText = ""
     
     if entry.type == "online_receive" then
-        EntryFrame.BackgroundColor3 = Color3.fromRGB(16, 28, 55)
-        EntryStroke.Color = Color3.fromRGB(0, 150, 255)
-        TextLbl.TextColor3 = Color3.fromRGB(140, 210, 255)
-        fullText = string.format("🔔 Gift received (Online) [%s]\nFrom: %s\nItem: %s", timeStr, entry.name, entry.item)
+        EntryFrame.BackgroundColor3 = Color3.fromRGB(12, 24, 40)
+        EntryStroke.Color = Color3.fromRGB(0, 240, 255)
+        TextLbl.TextColor3 = Color3.fromRGB(150, 230, 255)
+        fullText = string.format("🔔 RECV (Online) [%s]\nFrom: %s\nItem: %s", timeStr, entry.name, entry.item)
     elseif entry.type == "claim" then
-        EntryFrame.BackgroundColor3 = Color3.fromRGB(48, 16, 48)
+        EntryFrame.BackgroundColor3 = Color3.fromRGB(35, 12, 35)
         EntryStroke.Color = Color3.fromRGB(255, 100, 200)
         TextLbl.TextColor3 = Color3.fromRGB(255, 180, 230)
-        fullText = string.format("💖 Claimed successfully [%s]\nFrom: %s\nItem: %s", timeStr, entry.name, entry.item)
+        fullText = string.format("💖 CLAIMED [%s]\nFrom: %s\nItem: %s", timeStr, entry.name, entry.item)
     elseif entry.type == "short" then
-        EntryFrame.BackgroundColor3 = Color3.fromRGB(48, 16, 16)
-        EntryStroke.Color = Color3.fromRGB(255, 80, 80)
+        EntryFrame.BackgroundColor3 = Color3.fromRGB(35, 12, 12)
+        EntryStroke.Color = Color3.fromRGB(255, 50, 50)
         TextLbl.TextColor3 = Color3.fromRGB(255, 180, 180)
         local amtStr = (entry.amount == "") and "" or (" - " .. tostring(entry.amount))
         fullText = string.format("To: %s [%s]\nItem: %s%s", entry.name, timeStr, entry.item, amtStr)
     else 
-        EntryFrame.BackgroundColor3 = Color3.fromRGB(24, 25, 32)
+        EntryFrame.BackgroundColor3 = Color3.fromRGB(16, 17, 22)
         EntryStroke.Color = Color3.fromRGB(50, 52, 65)
-        TextLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+        TextLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
         local amtStr = (entry.amount == "") and "" or (" - " .. tostring(entry.amount))
         fullText = string.format("To: %s [%s]\nItem: %s%s", entry.name, timeStr, entry.item, amtStr)
     end
@@ -1043,9 +1086,9 @@ local function RefreshInventoryUI()
                 if not ItemInputs[hash] then
                     local Row = Instance.new("Frame", Scroll)
                     Row.Size = UDim2.new(1, -10, 0, 26)
-                    Row.BackgroundColor3 = Color3.fromRGB(24, 25, 32)
+                    Row.BackgroundColor3 = Color3.fromRGB(16, 17, 22)
                     Row.Visible = isVisible
-                    Instance.new("UICorner", Row).CornerRadius = UDim.new(0, 6)
+                    Instance.new("UICorner", Row).CornerRadius = UDim.new(0, 0)
                     
                     local RowStroke = Instance.new("UIStroke", Row)
                     RowStroke.Thickness = 1
@@ -1055,11 +1098,11 @@ local function RefreshInventoryUI()
 
                     -- Row Hover Effect
                     Row.MouseEnter:Connect(function()
-                        tween(Row, 0.15, {BackgroundColor3 = Color3.fromRGB(30, 31, 40)})
-                        tween(RowStroke, 0.15, {Color = Color3.fromRGB(60, 62, 78), Transparency = 0})
+                        tween(Row, 0.15, {BackgroundColor3 = Color3.fromRGB(22, 23, 29)})
+                        tween(RowStroke, 0.15, {Color = Color3.fromRGB(0, 240, 255), Transparency = 0})
                     end)
                     Row.MouseLeave:Connect(function()
-                        tween(Row, 0.15, {BackgroundColor3 = Color3.fromRGB(24, 25, 32)})
+                        tween(Row, 0.15, {BackgroundColor3 = Color3.fromRGB(16, 17, 22)})
                         tween(RowStroke, 0.15, {Color = Color3.fromRGB(38, 40, 50), Transparency = 0.4})
                     end)
 
@@ -1447,9 +1490,16 @@ MinBtn.MouseButton1Click:Connect(function()
         tween(MainFrame, 0.25, {Size = UDim2.new(0, 270, 0, 365)}, Enum.EasingStyle.Quad)
         task.wait(0.18)
         TradeFrame.Visible = true
-        HistoryFrame.Visible = true
         tween(TradeFrame, 0.15, {Size = UDim2.new(1, 0, 1, -32)})
-        tween(HistoryFrame, 0.15, {Size = UDim2.new(0, 210, 1, 0)})
+        
+        if isHistoryOpen then
+            HistoryFrame.Visible = true
+            tween(HistoryFrame, 0.15, {Size = UDim2.new(0, 210, 1, 0), Position = UDim2.new(1, 5, 0, 0)})
+        else
+            HistoryFrame.Visible = false
+            HistoryFrame.Size = UDim2.new(0, 210, 1, 0)
+            HistoryFrame.Position = UDim2.new(0, 30, 0, 0)
+        end
         MinBtn.Text = "—"
     end
 end)
