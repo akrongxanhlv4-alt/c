@@ -125,11 +125,23 @@ local function formatArgs(...)
         elseif t == "number" or t == "boolean" then
             table.insert(strParts, tostring(v))
         elseif t == "table" then
-            local keys = {}
-            for k, val in pairs(v) do
-                table.insert(keys, tostring(k) .. ":" .. tostring(val))
-            end
-            table.insert(strParts, "{" .. table.concat(keys, ", ") .. "}")
+            local success, keys = pcall(function()
+                local parts = {}
+                local count = 0
+                for k, val in pairs(v) do
+                    count = count + 1
+                    if count > 5 then
+                        table.insert(parts, "...")
+                        break
+                    end
+                    table.insert(parts, tostring(k) .. ":" .. tostring(type(val) == "table" and "{...}" or tostring(val)))
+                end
+                return "{" .. table.concat(parts, ", ") .. "}"
+            end)
+            table.insert(strParts, success and keys or "{Table}")
+        elseif t == "userdata" then
+            local success, name = pcall(function() return v.Name end)
+            table.insert(strParts, success and ("Instance:" .. name) or "Userdata")
         else
             table.insert(strParts, tostring(v))
         end
@@ -137,20 +149,13 @@ local function formatArgs(...)
     return table.concat(strParts, ", ")
 end
 
--- Inject Metatable Hooks
-local gmt = getrawmetatable(game)
-setreadonly(gmt, false)
-local oldNamecall = gmt.__namecall
-
-gmt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    
-    local isInstance = typeof(self) == "Instance"
-    if isInstance then
-        local className = nil
-        pcall(function() className = self.ClassName end)
-        
-        if className == "RemoteEvent" or className == "RemoteFunction" then
+-- Inject Hooks
+local hooked = false
+local hookfunction = hookfunction or replaceclosure or detour_function
+if hookfunction then
+    pcall(function()
+        local oldFireServer
+        oldFireServer = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(self, ...)
             local args = {...}
             pcall(function()
                 local remoteName = self.Name
@@ -158,17 +163,95 @@ gmt.__namecall = newcclosure(function(self, ...)
                 local lowerName = string.lower(remoteName)
                 
                 if string.find(lowerName, "drop") or string.find(lowerName, "discard") or string.find(lowerName, "trash") or string.find(lowerName, "delete") or string.find(lowerName, "remove") then
-                    logMessage("[Fire] 📤 DROP/DISCARD: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(255, 140, 0))
+                    logMessage("[Fire] 📤 DROP: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(255, 140, 0))
                 elseif string.find(lowerName, "claim") or string.find(lowerName, "collect") or string.find(lowerName, "pickup") or string.find(lowerName, "grab") then
-                    logMessage("[Fire] 📥 COLLECT/CLAIM: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(0, 220, 255))
+                    logMessage("[Fire] 📥 COLLECT: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(0, 220, 255))
                 else
-                    logMessage("[Call] " .. remoteName .. " (" .. argsString .. ")", Color3.fromRGB(140, 140, 140))
+                    logMessage("[Fire] " .. remoteName .. " (" .. argsString .. ")", Color3.fromRGB(140, 140, 140))
                 end
             end)
-        end
-    end
-    
-    return oldNamecall(self, ...)
-end)
+            return oldFireServer(self, unpack(args))
+        end))
 
-logMessage("Network hooks successfully attached to game client!", Color3.fromRGB(0, 255, 127))
+        local oldInvokeServer
+        oldInvokeServer = hookfunction(Instance.new("RemoteFunction").InvokeServer, newcclosure(function(self, ...)
+            local args = {...}
+            pcall(function()
+                local remoteName = self.Name
+                local argsString = formatArgs(unpack(args))
+                local lowerName = string.lower(remoteName)
+                
+                if string.find(lowerName, "drop") or string.find(lowerName, "discard") or string.find(lowerName, "trash") or string.find(lowerName, "delete") or string.find(lowerName, "remove") then
+                    logMessage("[Invoke] 📤 DROP: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(255, 140, 0))
+                elseif string.find(lowerName, "claim") or string.find(lowerName, "collect") or string.find(lowerName, "pickup") or string.find(lowerName, "grab") then
+                    logMessage("[Invoke] 📥 COLLECT: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(0, 220, 255))
+                else
+                    logMessage("[Invoke] " .. remoteName .. " (" .. argsString .. ")", Color3.fromRGB(140, 140, 140))
+                end
+            end)
+            return oldInvokeServer(self, unpack(args))
+        end))
+        
+        -- Hook UnreliableRemoteEvent if it exists in the game
+        pcall(function()
+            local oldUnreliableFire
+            oldUnreliableFire = hookfunction(Instance.new("UnreliableRemoteEvent").FireServer, newcclosure(function(self, ...)
+                local args = {...}
+                pcall(function()
+                    local remoteName = self.Name
+                    local argsString = formatArgs(unpack(args))
+                    local lowerName = string.lower(remoteName)
+                    
+                    if string.find(lowerName, "drop") or string.find(lowerName, "discard") or string.find(lowerName, "trash") or string.find(lowerName, "delete") or string.find(lowerName, "remove") then
+                        logMessage("[Unreliable] 📤 DROP: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(255, 140, 0))
+                    elseif string.find(lowerName, "claim") or string.find(lowerName, "collect") or string.find(lowerName, "pickup") or string.find(lowerName, "grab") then
+                        logMessage("[Unreliable] 📥 COLLECT: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(0, 220, 255))
+                    else
+                        logMessage("[Unreliable] " .. remoteName .. " (" .. argsString .. ")", Color3.fromRGB(140, 140, 140))
+                    end
+                end)
+                return oldUnreliableFire(self, unpack(args))
+            end))
+        end)
+        
+        hooked = true
+        logMessage("API Hooks installed via hookfunction!", Color3.fromRGB(0, 255, 127))
+    end)
+end
+
+if not hooked then
+    pcall(function()
+        local gmt = getrawmetatable(game)
+        setreadonly(gmt, false)
+        local oldNamecall = gmt.__namecall
+        
+        gmt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            local isInstance = typeof(self) == "Instance"
+            
+            if isInstance then
+                local className = nil
+                pcall(function() className = self.ClassName end)
+                
+                if className == "RemoteEvent" or className == "RemoteFunction" or className == "UnreliableRemoteEvent" then
+                    local args = {...}
+                    pcall(function()
+                        local remoteName = self.Name
+                        local argsString = formatArgs(unpack(args))
+                        local lowerName = string.lower(remoteName)
+                        
+                        if string.find(lowerName, "drop") or string.find(lowerName, "discard") or string.find(lowerName, "trash") or string.find(lowerName, "delete") or string.find(lowerName, "remove") then
+                            logMessage("[Namecall] 📤 DROP: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(255, 140, 0))
+                        elseif string.find(lowerName, "claim") or string.find(lowerName, "collect") or string.find(lowerName, "pickup") or string.find(lowerName, "grab") then
+                            logMessage("[Namecall] 📥 COLLECT: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(0, 220, 255))
+                        else
+                            logMessage("[Namecall] " .. remoteName .. " (" .. argsString .. ")", Color3.fromRGB(140, 140, 140))
+                        end
+                    end)
+                end
+            end
+            return oldNamecall(self, ...)
+        end)
+        logMessage("Metatable Hooks installed!", Color3.fromRGB(0, 255, 127))
+    end)
+end
