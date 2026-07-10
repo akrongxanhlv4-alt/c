@@ -119,27 +119,110 @@ local PS = require(RS:WaitForChild("ClientModules"):WaitForChild("PlayerStateCli
 -- ==========================================
 -- SUPER FAST ORB & LOOT COLLECTOR
 -- ==========================================
+-- ==========================================
+-- DYNAMIC COLLECTION RESOLVER
+-- ==========================================
+local function FindCollectFolders()
+    local folders = {}
+    
+    local things = workspace:FindFirstChild("__THINGS")
+    if things then
+        for _, child in ipairs(things:GetChildren()) do
+            local lowerName = string.lower(child.Name)
+            if string.find(lowerName, "orb") or string.find(lowerName, "loot") or string.find(lowerName, "drop") or string.find(lowerName, "collect") then
+                table.insert(folders, child)
+            end
+        end
+    end
+    
+    for _, child in ipairs(workspace:GetChildren()) do
+        if child:IsA("Folder") or child:IsA("Model") then
+            local lowerName = string.lower(child.Name)
+            if child.Name ~= "__THINGS" and (string.find(lowerName, "drop") or string.find(lowerName, "collect") or string.find(lowerName, "orb") or string.find(lowerName, "loot")) then
+                table.insert(folders, child)
+            end
+        end
+    end
+    
+    return folders
+end
+
+local function FindClaimRemote()
+    local netFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Network")
+    if not netFolder then return nil end
+    
+    for _, child in ipairs(netFolder:GetChildren()) do
+        local lowerName = string.lower(child.Name)
+        if string.find(lowerName, "claim") or string.find(lowerName, "collect") or string.find(lowerName, "pickup") or string.find(lowerName, "grab") then
+            return child
+        end
+    end
+    return nil
+end
+
+-- ==========================================
+-- SUPER FAST HYBRID COLLECTOR (ORBS, LOOTBAGS, DROPS)
+-- ==========================================
 local function collectAllOrbs()
-    local orbsFolder = workspace:FindFirstChild("__THINGS") and workspace.__THINGS:FindFirstChild("Orbs")
-    if orbsFolder then
-        local children = orbsFolder:GetChildren()
+    local localPlayer = game:GetService("Players").LocalPlayer
+    local character = localPlayer and localPlayer.Character
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    local collectFolders = FindCollectFolders()
+    local claimRemote = FindClaimRemote()
+    
+    for _, folder in ipairs(collectFolders) do
+        local children = folder:GetChildren()
         if #children > 0 then
-            local orbTable = {}
-            for _, v in ipairs(children) do
-                if v:IsA("BasePart") or v:IsA("Model") then
-                    orbTable[v.Name] = v.Name
+            local itemNames = {}
+            for _, child in ipairs(children) do
+                if child:IsA("BasePart") or child:IsA("Model") then
+                    table.insert(itemNames, child.Name)
                 end
             end
-            pcall(function()
-                if Net and Net.Orbs and Net.Orbs.Claim then
-                    Net.Orbs.Claim:Fire(orbTable)
-                else
-                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Network") and game:GetService("ReplicatedStorage").Network:FindFirstChild("Orbs: Claim")
-                    if remote then
-                        remote:FireServer(orbTable)
+            
+            -- Method 1: Remote-based claiming (standard simulator)
+            if claimRemote then
+                pcall(function()
+                    if claimRemote:IsA("RemoteFunction") then
+                        claimRemote:InvokeServer(itemNames)
+                    else
+                        claimRemote:FireServer(itemNames)
                     end
+                end)
+            end
+            
+            -- Fallback/Alternative: Framework built-in direct modules
+            pcall(function()
+                if Net then
+                    if Net.Orbs and Net.Orbs.Claim then Net.Orbs.Claim:Fire(itemNames) end
+                    if Net.Lootbags and Net.Lootbags.Claim then Net.Lootbags.Claim:Fire(itemNames) end
                 end
             end)
+            
+            -- Method 2: Physical/Touch-based collection (Grow a Garden / falling fruits & seeds)
+            for _, child in ipairs(children) do
+                pcall(function()
+                    local touchPart = nil
+                    if child:IsA("BasePart") then
+                        touchPart = child
+                    elseif child:IsA("Model") then
+                        touchPart = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
+                    end
+                    
+                    if touchPart and touchPart:IsA("BasePart") then
+                        if firetouchinterest then
+                            firetouchinterest(touchPart, rootPart, 0)
+                            task.wait()
+                            firetouchinterest(touchPart, rootPart, 1)
+                        else
+                            -- Teleport physical drop to player
+                            touchPart.CFrame = rootPart.CFrame
+                        end
+                    end
+                end)
+            end
         end
     end
 end
@@ -1089,48 +1172,141 @@ local function GetInventoryData()
 end
 
 -- ==========================================
+-- DYNAMIC NETWORK REMOTE RESOLVER
+-- ==========================================
+local function GetUseRemote(categoryName, itemKey)
+    local netFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Network")
+    if not netFolder then return nil end
+    
+    local possibleNames = {}
+    local catClean = tostring(categoryName or "")
+    local catSingular = catClean
+    if string.sub(catClean, -1) == "s" then
+        catSingular = string.sub(catClean, 1, -2)
+    end
+    
+    catSingular = string.upper(string.sub(catSingular, 1, 1)) .. string.sub(catSingular, 2)
+    
+    local catPlural = catSingular .. "s"
+    if catSingular == "Lootbox" then
+        catPlural = "Lootboxes"
+    end
+    
+    table.insert(possibleNames, catPlural .. ": Use")
+    table.insert(possibleNames, catPlural .. ": Consume")
+    table.insert(possibleNames, catPlural .. ": Activate")
+    
+    table.insert(possibleNames, catSingular .. ": Use")
+    table.insert(possibleNames, catSingular .. ": Consume")
+    table.insert(possibleNames, catSingular .. ": Activate")
+    
+    if string.find(string.lower(catClean), "seed") then
+        table.insert(possibleNames, "Seeds: Plant")
+        table.insert(possibleNames, "Seed: Plant")
+        table.insert(possibleNames, "Seeds: Use")
+    end
+    
+    table.insert(possibleNames, "Consumables: Use")
+    table.insert(possibleNames, "Item: Use")
+    table.insert(possibleNames, "Items: Use")
+    
+    for _, name in ipairs(possibleNames) do
+        local remote = netFolder:FindFirstChild(name)
+        if remote then
+            return remote
+        end
+    end
+    
+    for _, child in ipairs(netFolder:GetChildren()) do
+        local cName = child.Name
+        if string.find(string.lower(cName), string.lower(catSingular)) and 
+           (string.find(string.lower(cName), "use") or string.find(string.lower(cName), "consume") or string.find(string.lower(cName), "activate") or string.find(string.lower(cName), "plant")) then
+            return child
+        end
+    end
+    
+    return nil
+end
+
+-- ==========================================
+-- DYNAMIC DROP REMOTE RESOLVER
+-- ==========================================
+local function FindDropRemote()
+    local netFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Network")
+    if not netFolder then return nil end
+    
+    local exactNames = {
+        "Inventory: Drop",
+        "Inventory: DropItem",
+        "DropItem",
+        "Drop",
+        "Inventory: Discard",
+        "Discard",
+        "Trash",
+        "Delete",
+        "Remove"
+    }
+    
+    for _, name in ipairs(exactNames) do
+        local remote = netFolder:FindFirstChild(name)
+        if remote then return remote end
+    end
+    
+    for _, child in ipairs(netFolder:GetChildren()) do
+        local lowerName = string.lower(child.Name)
+        if string.find(lowerName, "drop") or string.find(lowerName, "discard") or string.find(lowerName, "trash") or string.find(lowerName, "delete") then
+            return child
+        end
+    end
+    
+    return nil
+end
+
+-- ==========================================
 -- HIGH-SPEED ITEM DROPPER
 -- ==========================================
-local function DropItem(displayName, itemKey, countToDrop)
+local function DropItem(displayName, itemKey, category, countToDrop)
     if countToDrop <= 0 then return end
     
     StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
     StatusLabel.Text = "Dropping " .. tostring(countToDrop) .. " " .. displayName .. "..."
     
+    local remote = FindDropRemote() or GetUseRemote(category, itemKey)
+    if not remote then
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+        StatusLabel.Text = "No drop/use remote found in this game!"
+        task.wait(1.5)
+        RefreshInventoryUI()
+        return
+    end
+    
     task.spawn(function()
-        for i = 1, countToDrop do
-            local success = pcall(function()
-                if Net and Net.Consumables and Net.Consumables.Use then
-                    if type(Net.Consumables.Use.Invoke) == "function" then
-                        Net.Consumables.Use:Invoke(itemKey)
-                    elseif type(Net.Consumables.Use.Fire) == "function" then
-                        Net.Consumables.Use:Fire(itemKey)
-                    end
-                else
-                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Network") and game:GetService("ReplicatedStorage").Network:FindFirstChild("Consumables: Use")
-                    if remote then
-                        if remote:IsA("RemoteFunction") then
-                            remote:InvokeServer(itemKey)
-                        elseif remote:IsA("RemoteEvent") then
-                            remote:FireServer(itemKey)
-                        end
-                    end
-                end
-            end)
-            if not success then
+        local usedBulk = false
+        local success, err = pcall(function()
+            if remote:IsA("RemoteFunction") then
+                local res = remote:InvokeServer(itemKey, countToDrop)
+                if res ~= nil then usedBulk = true end
+            else
+                remote:FireServer(itemKey, countToDrop)
+                usedBulk = true
+            end
+        end)
+        
+        if not success or not usedBulk then
+            for i = 1, countToDrop do
                 pcall(function()
-                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Network") and game:GetService("ReplicatedStorage").Network:FindFirstChild("Consumables: Use")
-                    if remote then
-                        if remote:IsA("RemoteFunction") then
-                            remote:InvokeServer(displayName)
-                        elseif remote:IsA("RemoteEvent") then
-                            remote:FireServer(displayName)
-                        end
+                    if remote:IsA("RemoteFunction") then
+                        remote:InvokeServer(itemKey, 1)
+                    else
+                        remote:FireServer(itemKey, 1)
                     end
                 end)
+                task.wait(0.08)
             end
-            task.wait(0.08) -- High speed drop delay
+        else
+            task.wait(0.2)
         end
+        
         StatusLabel.Text = "✅ Finished dropping " .. displayName
         task.wait(0.5)
         RefreshInventoryUI()
@@ -1253,8 +1429,10 @@ local function RefreshInventoryUI()
                         DropBtn.MouseButton1Click:Connect(function()
                             local countToDrop = tonumber(DropAmountInp.Text) or 0
                             if countToDrop > 0 then
-                                local itemKey = data.RawItems[1] and data.RawItems[1].ItemKey or hash
-                                DropItem(data.DisplayName, itemKey, countToDrop)
+                                local firstRaw = data.RawItems[1]
+                                local itemKey = firstRaw and firstRaw.ItemKey or hash
+                                local category = firstRaw and firstRaw.Category or data.TabCategory
+                                DropItem(data.DisplayName, itemKey, category, countToDrop)
                             end
                         end)
                     end
