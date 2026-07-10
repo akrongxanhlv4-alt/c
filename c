@@ -144,21 +144,27 @@ local oldNamecall = gmt.__namecall
 
 gmt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
-    local remoteClass = self.ClassName
     
-    if remoteClass == "RemoteEvent" or remoteClass == "RemoteFunction" then
-        local remoteName = self.Name
-        local argsString = formatArgs(...)
-        local lowerName = string.lower(remoteName)
+    local isInstance = typeof(self) == "Instance"
+    if isInstance then
+        local className = nil
+        pcall(function() className = self.ClassName end)
         
-        -- Filter & Highlight Drop, Discard, Use, Claim, Collect, Pickup
-        if string.find(lowerName, "drop") or string.find(lowerName, "discard") or string.find(lowerName, "trash") or string.find(lowerName, "delete") or string.find(lowerName, "remove") then
-            logMessage("[Fire] 📤 DROP/DISCARD: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(255, 140, 0))
-        elseif string.find(lowerName, "claim") or string.find(lowerName, "collect") or string.find(lowerName, "pickup") or string.find(lowerName, "grab") then
-            logMessage("[Fire] 📥 COLLECT/CLAIM: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(0, 220, 255))
-        else
-            -- Print other actions quietly in gray
-            logMessage("[Call] " .. remoteName .. " (" .. argsString .. ")", Color3.fromRGB(140, 140, 140))
+        if className == "RemoteEvent" or className == "RemoteFunction" then
+            local args = {...}
+            pcall(function()
+                local remoteName = self.Name
+                local argsString = formatArgs(unpack(args))
+                local lowerName = string.lower(remoteName)
+                
+                if string.find(lowerName, "drop") or string.find(lowerName, "discard") or string.find(lowerName, "trash") or string.find(lowerName, "delete") or string.find(lowerName, "remove") then
+                    logMessage("[Fire] 📤 DROP/DISCARD: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(255, 140, 0))
+                elseif string.find(lowerName, "claim") or string.find(lowerName, "collect") or string.find(lowerName, "pickup") or string.find(lowerName, "grab") then
+                    logMessage("[Fire] 📥 COLLECT/CLAIM: " .. remoteName .. " | Args: " .. argsString, Color3.fromRGB(0, 220, 255))
+                else
+                    logMessage("[Call] " .. remoteName .. " (" .. argsString .. ")", Color3.fromRGB(140, 140, 140))
+                end
+            end)
         end
     end
     
